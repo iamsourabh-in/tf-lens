@@ -25,6 +25,7 @@ export interface NormalizedStateResource {
   instanceCount: number;
   parseStatus: ParseStatus;
   parseWarning?: string;
+  dependencies?: string[];
   raw?: unknown;
 }
 

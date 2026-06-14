@@ -98,6 +98,9 @@ export function normalizeResource(
       ? entry.mode
       : 'unknown';
 
+  const rawDeps = (entry as Record<string, unknown>).depends_on ?? (entry as Record<string, unknown>).dependencies;
+  const dependencies = Array.isArray(rawDeps) ? rawDeps.map(d => String(d)) : [];
+
   const resource: NormalizedResource = {
     id: address || `resource-${index}`,
     address,
@@ -114,7 +117,8 @@ export function normalizeResource(
     beforeSensitive: change?.before_sensitive === true,
     afterSensitive: change?.after_sensitive === true,
     parseStatus,
-    raw: parseStatus !== 'ok' ? entry : undefined,
+    dependencies,
+    raw: entry,
   };
 
   if (warnings.length > 0) {

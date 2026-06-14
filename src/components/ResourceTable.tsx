@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { displayActionLabel } from '../lib/actionLabels';
 import type { NormalizedResource } from '../types/plan';
 import { EmptyState } from './EmptyState';
+import { ProviderIcon } from './ProviderIcon';
 
 interface ResourceTableProps {
   resources: NormalizedResource[];
@@ -44,7 +45,12 @@ export function ResourceTable({
       }),
       columnHelper.accessor('type', {
         header: 'Type',
-        cell: (info) => <span className="mono">{info.getValue()}</span>,
+        cell: (info) => (
+          <span className="type-cell-value">
+            <ProviderIcon provider={info.row.original.provider} type={info.getValue()} />
+            <span className="mono">{info.getValue()}</span>
+          </span>
+        ),
       }),
       columnHelper.accessor('address', {
         header: 'Address',
@@ -54,6 +60,28 @@ export function ResourceTable({
           </span>
         ),
       }),
+      columnHelper.accessor(
+        (row) => {
+          if (row.after && typeof row.after === 'object') {
+            const id = (row.after as Record<string, unknown>).id;
+            if (typeof id === 'string') return id;
+          }
+          if (row.before && typeof row.before === 'object') {
+            const id = (row.before as Record<string, unknown>).id;
+            if (typeof id === 'string') return id;
+          }
+          return '(known after apply)';
+        },
+        {
+          id: 'resourceId',
+          header: 'Resource ID',
+          cell: (info) => (
+            <span className="mono resource-id-cell" title={info.getValue()}>
+              {info.getValue()}
+            </span>
+          ),
+        },
+      ),
       columnHelper.accessor('moduleAddress', {
         header: 'Module',
         cell: (info) => info.getValue() || '(root)',

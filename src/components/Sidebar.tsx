@@ -30,6 +30,7 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
           to="/plan"
           className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
           title="Plan Viewer"
+          data-tooltip="Plan Viewer"
         >
           <LayoutGrid size={20} />
         </NavLink>
@@ -37,6 +38,7 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
           to="/state"
           className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
           title="State Viewer"
+          data-tooltip="State Viewer"
         >
           <Database size={20} />
         </NavLink>
@@ -44,6 +46,7 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
           to="/topology"
           className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
           title="Topology Map"
+          data-tooltip="Topology Map"
         >
           <Network size={20} />
         </NavLink>
@@ -51,6 +54,7 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
           to="/reports"
           className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
           title="Security Reports"
+          data-tooltip="Security Reports"
         >
           <FileText size={20} />
         </NavLink>
@@ -58,6 +62,7 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
           to="/settings"
           className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
           title="Settings"
+          data-tooltip="Settings"
         >
           <Settings size={20} />
         </NavLink>
@@ -69,10 +74,11 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
           className="sidebar-item theme-toggle-btn"
           onClick={toggleTheme}
           title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+          data-tooltip={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
         >
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
         </button>
-        <button type="button" className="sidebar-item" title="Help">
+        <button type="button" className="sidebar-item" title="Help" data-tooltip="Help & Docs">
           <HelpCircle size={20} />
         </button>
       </div>

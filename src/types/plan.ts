@@ -34,6 +34,7 @@ export interface NormalizedResource {
   afterSensitive: boolean;
   parseStatus: ParseStatus;
   parseWarning?: string;
+  dependencies?: string[];
   raw?: unknown;
 }
 

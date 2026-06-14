@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { displayActionLabel } from '../lib/actionLabels';
 import type { NormalizedResource } from '../types/plan';
 import { JsonTree } from './JsonTree';
+import { ProviderIcon } from './ProviderIcon';
 
 interface ResourceDetailProps {
   resource: NormalizedResource;
@@ -16,6 +17,18 @@ export function ResourceDetail({ resource, onClose }: ResourceDetailProps) {
   const [showSensitive, setShowSensitive] = useState(false);
 
   const hasRaw = resource.parseStatus !== 'ok' || resource.raw !== undefined;
+
+  const resourceId = (() => {
+    if (resource.after && typeof resource.after === 'object') {
+      const id = (resource.after as Record<string, unknown>).id;
+      if (typeof id === 'string') return id;
+    }
+    if (resource.before && typeof resource.before === 'object') {
+      const id = (resource.before as Record<string, unknown>).id;
+      if (typeof id === 'string') return id;
+    }
+    return '(known after apply)';
+  })();
 
   return (
     <aside className="resource-detail">
@@ -39,7 +52,14 @@ export function ResourceDetail({ resource, onClose }: ResourceDetailProps) {
       <dl className="detail-meta">
         <div>
           <dt>Type</dt>
-          <dd className="mono">{resource.type}</dd>
+          <dd className="mono type-detail-val">
+            <ProviderIcon provider={resource.provider} type={resource.type} />
+            <span>{resource.type}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Resource ID</dt>
+          <dd className="mono selectable-text">{resourceId}</dd>
         </div>
         <div>
           <dt>Module</dt>

@@ -1,11 +1,15 @@
+import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { displayActionLabel } from '../lib/actionLabels';
-import type { ActionCounts, PlanMetadata } from '../types/plan';
+import type { ActionCounts, PlanMetadata, NormalizedResource } from '../types/plan';
 import { SummaryCharts } from './SummaryCharts';
+import { ProviderIcon } from './ProviderIcon';
 
 interface PlanSummaryProps {
   metadata: PlanMetadata;
   actionCounts: ActionCounts;
   typeCounts: Record<string, number>;
+  resources: NormalizedResource[];
 }
 
 const ACTION_CARDS: Array<{
@@ -20,18 +24,17 @@ const ACTION_CARDS: Array<{
   { key: 'noOp', className: 'action-noop' },
 ];
 
-function topTypes(typeCounts: Record<string, number>, limit = 10) {
-  return Object.entries(typeCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit);
-}
-
 export function PlanSummary({
   metadata,
   actionCounts,
   typeCounts,
+  resources,
 }: PlanSummaryProps) {
-  const top = topTypes(typeCounts);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+  const top = sortedTypes.slice(0, 10);
+  const rest = sortedTypes.slice(10);
   const maxTypeCount = top[0]?.[1] ?? 1;
 
   return (
@@ -66,12 +69,15 @@ export function PlanSummary({
 
       {top.length > 0 && (
         <div className="type-breakdown">
-          <h3>Top 10 resource types</h3>
+          <h3>Resource Type Breakdown</h3>
           <ul>
             {top.map(([type, count]) => (
               <li key={type}>
-                <span className="type-name" title={type}>
-                  {type}
+                <span className="type-name-wrapper">
+                  <ProviderIcon provider={type.split('_')[0]} type={type} />
+                  <span className="type-name" title={type}>
+                    {type}
+                  </span>
                 </span>
                 <div className="type-bar-track">
                   <div
@@ -83,10 +89,45 @@ export function PlanSummary({
               </li>
             ))}
           </ul>
+
+          {rest.length > 0 && (
+            <>
+              <div className={`collapsible-types-wrapper ${isExpanded ? 'expanded' : ''}`}>
+                <ul className="collapsible-types-content">
+                  {rest.map(([type, count]) => (
+                    <li key={type}>
+                      <span className="type-name-wrapper">
+                        <ProviderIcon provider={type.split('_')[0]} type={type} />
+                        <span className="type-name" title={type}>
+                          {type}
+                        </span>
+                      </span>
+                      <div className="type-bar-track">
+                        <div
+                          className="type-bar-fill"
+                          style={{ width: `${(count / maxTypeCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="type-count">{count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                type="button"
+                className="toggle-types-btn"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                <span>{isExpanded ? 'Show Less' : `Show All (${sortedTypes.length} types)`}</span>
+                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      <SummaryCharts type="plan" counts={actionCounts} />
+      <SummaryCharts type="plan" counts={actionCounts} resources={resources} />
     </section>
   );
 }
+

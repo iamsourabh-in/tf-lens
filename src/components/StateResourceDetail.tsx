@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { statusClassName, statusLabel } from '../lib/stateStatus';
 import type { NormalizedStateResource } from '../types/state';
 import { JsonTree } from './JsonTree';
+import { ProviderIcon } from './ProviderIcon';
 
 interface StateResourceDetailProps {
   resource: NormalizedStateResource;
@@ -19,6 +20,14 @@ export function StateResourceDetail({
   const [showSensitive, setShowSensitive] = useState(false);
 
   const hasRaw = resource.parseStatus !== 'ok' || resource.raw !== undefined;
+
+  const resourceId = (() => {
+    if (resource.attributes && typeof resource.attributes === 'object') {
+      const id = (resource.attributes as Record<string, unknown>).id;
+      if (typeof id === 'string') return id;
+    }
+    return 'unknown';
+  })();
 
   return (
     <aside className="resource-detail">
@@ -42,7 +51,14 @@ export function StateResourceDetail({
       <dl className="detail-meta">
         <div>
           <dt>Type</dt>
-          <dd className="mono">{resource.type}</dd>
+          <dd className="mono type-detail-val">
+            <ProviderIcon provider={resource.provider} type={resource.type} />
+            <span>{resource.type}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Resource ID</dt>
+          <dd className="mono selectable-text">{resourceId}</dd>
         </div>
         <div>
           <dt>Module</dt>

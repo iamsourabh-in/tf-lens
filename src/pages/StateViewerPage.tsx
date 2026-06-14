@@ -3,6 +3,7 @@ import {
   Boxes,
   FolderTree,
   Share2,
+  FileJson,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FileUpload } from '../components/FileUpload';
@@ -15,6 +16,7 @@ import { StateResourceDetail } from '../components/StateResourceDetail';
 import { StateResourceTable } from '../components/StateResourceTable';
 import { StateSummary } from '../components/StateSummary';
 import { WarningsBanner } from '../components/WarningsBanner';
+import { RawJsonPanel } from '../components/RawJsonPanel';
 import sampleState from '../fixtures/sample-state.json';
 import { isStateFile, STATE_ACCEPT } from '../lib/acceptedFiles';
 import { filterStateResources } from '../lib/filterStateResources';
@@ -25,7 +27,7 @@ import type {
   StateResourceFilters,
 } from '../types/state';
 
-type Tab = 'resources' | 'modules' | 'outputs' | 'issues';
+type Tab = 'resources' | 'modules' | 'outputs' | 'issues' | 'raw';
 
 const EMPTY_FILTERS: StateResourceFilters = {
   search: '',
@@ -59,6 +61,7 @@ export function StateViewerPage({
   const [filters, setFilters] = useState<StateResourceFilters>(EMPTY_FILTERS);
   const [selectedResource, setSelectedResource] =
     useState<NormalizedStateResource | null>(null);
+  const [rawJsonText, setRawJsonText] = useState<string>('');
 
   const filteredResources = useMemo(() => {
     if (!state) return [];
@@ -71,6 +74,7 @@ export function StateViewerPage({
     try {
       const parsed = parseStateJson(text, name);
       setState(parsed);
+      setRawJsonText(text);
       setFileName(name);
       setFileSize(size);
       setTab('resources');
@@ -78,6 +82,7 @@ export function StateViewerPage({
       setSelectedResource(null);
     } catch (loadError) {
       setState(null);
+      setRawJsonText('');
       setError(
         loadError instanceof Error
           ? loadError.message
@@ -102,7 +107,7 @@ export function StateViewerPage({
   };
 
   const issueCount = state?.issues.length ?? 0;
-  const tabs: Array<{ id: Tab; label: string; icon: typeof Boxes }> = [
+  const tabs: Array<{ id: Tab; label: string; icon: any }> = [
     { id: 'resources', label: 'Resources', icon: Boxes },
     { id: 'modules', label: 'Modules', icon: FolderTree },
     { id: 'outputs', label: 'Outputs', icon: Share2 },
@@ -111,13 +116,14 @@ export function StateViewerPage({
       label: issueCount > 0 ? `Issues (${issueCount})` : 'Issues',
       icon: AlertTriangle,
     },
+    { id: 'raw', label: 'Raw JSON', icon: FileJson },
   ];
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>State Viewer</h1>
+          <h1>tf-lens State Explorer</h1>
           <p>
             Upload a Terraform state file (.tfstate or JSON export) to explore
             managed resources.
@@ -151,6 +157,7 @@ export function StateViewerPage({
             metadata={state.metadata}
             statusCounts={state.statusCounts}
             typeCounts={state.typeCounts}
+            resources={state.resources}
           />
 
           <nav className="tab-nav">
@@ -160,6 +167,7 @@ export function StateViewerPage({
                 type="button"
                 className={tab === id ? 'active' : ''}
                 onClick={() => setTab(id)}
+                data-tooltip={`Switch to ${label}`}
               >
                 <Icon size={16} aria-hidden="true" />
                 {label}
@@ -206,6 +214,9 @@ export function StateViewerPage({
               issues={state.issues}
               checkResults={state.checkResults}
             />
+          )}
+          {tab === 'raw' && (
+            <RawJsonPanel jsonText={rawJsonText} fileName={fileName} />
           )}
         </>
       )}

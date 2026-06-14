@@ -210,6 +210,9 @@ export function normalizeLegacyStateResource(
   const { status, statusDetail, attributes } = deriveLegacyStatus(instances);
   const sensitivePaths = collectSensitivePaths(instances);
 
+  const rawDeps = entry.dependencies ?? (entry as any).depends_on;
+  const dependencies = Array.isArray(rawDeps) ? rawDeps.map(d => String(d)) : [];
+
   const resource: NormalizedStateResource = {
     id: address || `resource-${index}`,
     address,
@@ -225,7 +228,8 @@ export function normalizeLegacyStateResource(
     sensitivePaths,
     instanceCount: instances.length,
     parseStatus,
-    raw: parseStatus !== 'ok' ? entry : undefined,
+    dependencies,
+    raw: entry,
   };
 
   if (warnings.length > 0) {
@@ -312,6 +316,9 @@ export function normalizeShowJsonStateResource(
     warnings.push('missing values');
   }
 
+  const rawDeps = entry.dependencies ?? (entry as any).depends_on;
+  const dependencies = Array.isArray(rawDeps) ? rawDeps.map(d => String(d)) : [];
+
   const resource: NormalizedStateResource = {
     id: address || `resource-${index}`,
     address,
@@ -325,7 +332,8 @@ export function normalizeShowJsonStateResource(
     sensitivePaths,
     instanceCount: 1,
     parseStatus,
-    raw: parseStatus !== 'ok' ? entry : undefined,
+    dependencies,
+    raw: entry,
   };
 
   if (warnings.length > 0) {

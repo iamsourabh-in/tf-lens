@@ -1,12 +1,23 @@
-import type { ActionCounts } from '../types/plan';
-import type { StatusCounts } from '../types/state';
+import { useMemo } from 'react';
+import type { ActionCounts, NormalizedResource } from '../types/plan';
+import type { StatusCounts, NormalizedStateResource } from '../types/state';
 
 interface SummaryChartsProps {
   type: 'plan' | 'state';
   counts: ActionCounts | StatusCounts;
+  resources: Array<NormalizedResource | NormalizedStateResource>;
 }
 
-export function SummaryCharts({ type, counts }: SummaryChartsProps) {
+// Curated colors for module segments
+const SEGMENT_COLORS = [
+  'var(--color-accent)',
+  'var(--color-success)',
+  'var(--color-info)',
+  'var(--color-warning)',
+  'var(--color-replace)',
+];
+
+export function SummaryCharts({ type, counts, resources }: SummaryChartsProps) {
   // Extract values for the bar chart
   let data: Array<{ label: string; count: number; color: string }> = [];
   if (type === 'plan') {
@@ -28,50 +39,46 @@ export function SummaryCharts({ type, counts }: SummaryChartsProps) {
   }
 
   const maxCount = Math.max(...data.map(d => d.count), 5);
-
-  // Generate 8 data points that trend nicely based on the counts
-  const total = data.reduce((acc, curr) => acc + curr.count, 0);
-  const splinePoints = [
-    total * 0.1,
-    total * 0.3,
-    total * 0.25,
-    total * 0.5,
-    total * 0.45,
-    total * 0.7,
-    total * 0.65,
-    total * 0.85,
-  ].map(v => Math.max(Math.round(v), 2));
-  
-  const maxSplineVal = Math.max(...splinePoints, 10);
   const height = 150;
   const width = 450;
   const padding = 24;
-  
-  // Create path for the Area Chart
-  const points = splinePoints.map((val, i) => {
-    const x = padding + (i * (width - 2 * padding)) / (splinePoints.length - 1);
-    const y = height - padding - (val * (height - 2 * padding)) / maxSplineVal;
-    return { x, y };
-  });
 
-  let pathData = '';
-  if (points.length > 0) {
-    pathData = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      const cpX1 = p0.x + (p1.x - p0.x) / 2;
-      const cpY1 = p0.y;
-      const cpX2 = p0.x + (p1.x - p0.x) / 2;
-      const cpY2 = p1.y;
-      pathData += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.x} ${p1.y}`;
+  // Calculate module resource allocation (real data)
+  const moduleAllocation = useMemo(() => {
+    const countsMap: Record<string, number> = {};
+    resources.forEach(r => {
+      const mod = r.moduleAddress || '(root)';
+      countsMap[mod] = (countsMap[mod] ?? 0) + 1;
+    });
+
+    const totalResources = resources.length || 1;
+    const sorted = Object.entries(countsMap)
+      .sort((a, b) => b[1] - a[1]);
+
+    const topModules = sorted.slice(0, 4).map(([name, count], index) => ({
+      name,
+      count,
+      percentage: (count / totalResources) * 100,
+      color: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+    }));
+
+    // If there are more than 4 modules, group the rest into "Other"
+    if (sorted.length > 4) {
+      const otherCount = sorted.slice(4).reduce((acc, curr) => acc + curr[1], 0);
+      topModules.push({
+        name: 'Other Modules',
+        count: otherCount,
+        percentage: (otherCount / totalResources) * 100,
+        color: '#9ca3af',
+      });
     }
-  }
 
-  const fillPath = pathData + ` L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+    return topModules;
+  }, [resources]);
 
   return (
     <div className="charts-container">
+      {/* Chart 1: Resources by Status Bar Chart */}
       <div className="chart-box">
         <h4>Resources by Status</h4>
         <div className="chart-wrapper">
@@ -127,50 +134,37 @@ export function SummaryCharts({ type, counts }: SummaryChartsProps) {
         </div>
       </div>
 
+      {/* Chart 2: Module Resource Allocation Segmented Chart */}
       <div className="chart-box">
-        <h4>Resource Changes Over Time</h4>
-        <div className="chart-wrapper">
-          <svg viewBox={`0 0 ${width} ${height}`} className="svg-chart">
-            <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-
-            {/* Grid lines */}
-            <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--color-border)" />
-            <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="var(--color-border)" strokeDasharray="3 3" />
-            <line x1={padding} y1={(height) / 2} x2={width - padding} y2={(height) / 2} stroke="var(--color-border)" strokeDasharray="3 3" />
-
-            {/* Area and Line */}
-            {pathData && (
-              <>
-                <path d={fillPath} fill="url(#areaGrad)" />
-                <path d={pathData} fill="none" stroke="var(--color-accent)" strokeWidth="3.5" strokeLinecap="round" />
-              </>
-            )}
-
-            {/* Points */}
-            {points.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r="4.5" fill="var(--color-surface)" stroke="var(--color-accent)" strokeWidth="3" />
+        <h4>Module Resource Allocation</h4>
+        <div className="module-allocation-chart">
+          {/* Segmented Progress Bar */}
+          <div className="segmented-bar-track">
+            {moduleAllocation.map((seg) => (
+              <div
+                key={seg.name}
+                className="segmented-bar-fill"
+                style={{
+                  width: `${seg.percentage}%`,
+                  backgroundColor: seg.color,
+                }}
+                title={`${seg.name}: ${seg.count} resources (${seg.percentage.toFixed(1)}%)`}
+              />
             ))}
+          </div>
 
-            {/* X Axis Labels */}
-            {points.map((p, i) => (
-              <text
-                key={i}
-                x={p.x}
-                y={height - 6}
-                textAnchor="middle"
-                fill="var(--color-text-muted)"
-                fontSize="9"
-                fontWeight="500"
-              >
-                {String(i * 2).padStart(2, '0')}
-              </text>
+          {/* Legend Details */}
+          <ul className="module-allocation-legend">
+            {moduleAllocation.map((seg) => (
+              <li key={seg.name} className="legend-item">
+                <span className="legend-indicator" style={{ backgroundColor: seg.color }} />
+                <span className="legend-name" title={seg.name}>{seg.name}</span>
+                <span className="legend-details">
+                  <strong>{seg.count}</strong> ({seg.percentage.toFixed(0)}%)
+                </span>
+              </li>
             ))}
-          </svg>
+          </ul>
         </div>
       </div>
     </div>

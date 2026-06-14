@@ -3,6 +3,7 @@ import {
   FolderTree,
   Share2,
   Variable,
+  FileJson,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FileUpload } from '../components/FileUpload';
@@ -15,19 +16,21 @@ import { ResourcesLayout } from '../components/ResourcesLayout';
 import { ResourceTable } from '../components/ResourceTable';
 import { VariablesPanel } from '../components/VariablesPanel';
 import { WarningsBanner } from '../components/WarningsBanner';
+import { RawJsonPanel } from '../components/RawJsonPanel';
 import samplePlan from '../fixtures/sample-plan.json';
 import { isPlanFile, PLAN_ACCEPT } from '../lib/acceptedFiles';
 import { filterResources } from '../lib/filterResources';
 import { parsePlanJson } from '../lib/parsePlan';
 import type { NormalizedResource, ParsedPlan, ResourceFilters } from '../types/plan';
 
-type Tab = 'resources' | 'modules' | 'outputs' | 'variables';
+type Tab = 'resources' | 'modules' | 'outputs' | 'variables' | 'raw';
 
-const TABS: Array<{ id: Tab; label: string; icon: typeof Boxes }> = [
+const TABS: Array<{ id: Tab; label: string; icon: any }> = [
   { id: 'resources', label: 'Resources', icon: Boxes },
   { id: 'modules', label: 'Modules', icon: FolderTree },
   { id: 'outputs', label: 'Outputs', icon: Share2 },
   { id: 'variables', label: 'Variables', icon: Variable },
+  { id: 'raw', label: 'Raw JSON', icon: FileJson },
 ];
 
 const EMPTY_FILTERS: ResourceFilters = {
@@ -62,6 +65,7 @@ export function PlanViewerPage({
   const [filters, setFilters] = useState<ResourceFilters>(EMPTY_FILTERS);
   const [selectedResource, setSelectedResource] =
     useState<NormalizedResource | null>(null);
+  const [rawJsonText, setRawJsonText] = useState<string>('');
 
   const filteredResources = useMemo(() => {
     if (!plan) return [];
@@ -74,6 +78,7 @@ export function PlanViewerPage({
     try {
       const parsed = parsePlanJson(text, name);
       setPlan(parsed);
+      setRawJsonText(text);
       setFileName(name);
       setFileSize(size);
       setTab('resources');
@@ -81,6 +86,7 @@ export function PlanViewerPage({
       setSelectedResource(null);
     } catch (loadError) {
       setPlan(null);
+      setRawJsonText('');
       setError(
         loadError instanceof Error
           ? loadError.message
@@ -108,7 +114,7 @@ export function PlanViewerPage({
     <>
       <header className="page-header">
         <div>
-          <h1>Plan Viewer</h1>
+          <h1>tf-lens Plan Analyzer</h1>
           <p>Upload a Terraform plan JSON file to explore resource changes.</p>
         </div>
       </header>
@@ -142,6 +148,7 @@ export function PlanViewerPage({
             metadata={plan.metadata}
             actionCounts={plan.actionCounts}
             typeCounts={plan.typeCounts}
+            resources={plan.resources}
           />
 
           <nav className="tab-nav">
@@ -151,6 +158,7 @@ export function PlanViewerPage({
                 type="button"
                 className={tab === id ? 'active' : ''}
                 onClick={() => setTab(id)}
+                data-tooltip={`Switch to ${label}`}
               >
                 <Icon size={16} aria-hidden="true" />
                 {label}
@@ -186,10 +194,13 @@ export function PlanViewerPage({
             />
           )}
 
-          {tab === 'modules' && <ModuleTree resources={plan.resources} />}
+           {tab === 'modules' && <ModuleTree resources={plan.resources} />}
           {tab === 'outputs' && <OutputsPanel outputs={plan.outputs} />}
           {tab === 'variables' && (
             <VariablesPanel variables={plan.variables} />
+          )}
+          {tab === 'raw' && (
+            <RawJsonPanel jsonText={rawJsonText} fileName={fileName} />
           )}
         </>
       )}

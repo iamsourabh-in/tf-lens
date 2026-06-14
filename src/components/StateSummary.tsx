@@ -1,11 +1,15 @@
+import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { statusLabel } from '../lib/stateStatus';
-import type { StateMetadata, StatusCounts } from '../types/state';
+import type { StateMetadata, StatusCounts, NormalizedStateResource } from '../types/state';
 import { SummaryCharts } from './SummaryCharts';
+import { ProviderIcon } from './ProviderIcon';
 
 interface StateSummaryProps {
   metadata: StateMetadata;
   statusCounts: StatusCounts;
   typeCounts: Record<string, number>;
+  resources: NormalizedStateResource[];
 }
 
 const STATUS_CARDS: Array<{
@@ -19,18 +23,17 @@ const STATUS_CARDS: Array<{
   { key: 'failed', className: 'status-failed' },
 ];
 
-function topTypes(typeCounts: Record<string, number>, limit = 10) {
-  return Object.entries(typeCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit);
-}
-
 export function StateSummary({
   metadata,
   statusCounts,
   typeCounts,
+  resources,
 }: StateSummaryProps) {
-  const top = topTypes(typeCounts);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+  const top = sortedTypes.slice(0, 10);
+  const rest = sortedTypes.slice(10);
   const maxTypeCount = top[0]?.[1] ?? 1;
 
   return (
@@ -69,12 +72,15 @@ export function StateSummary({
 
       {top.length > 0 && (
         <div className="type-breakdown">
-          <h3>Top 10 resource types</h3>
+          <h3>Resource Type Breakdown</h3>
           <ul>
             {top.map(([type, count]) => (
               <li key={type}>
-                <span className="type-name" title={type}>
-                  {type}
+                <span className="type-name-wrapper">
+                  <ProviderIcon provider={type.split('_')[0]} type={type} />
+                  <span className="type-name" title={type}>
+                    {type}
+                  </span>
                 </span>
                 <div className="type-bar-track">
                   <div
@@ -86,10 +92,45 @@ export function StateSummary({
               </li>
             ))}
           </ul>
+
+          {rest.length > 0 && (
+            <>
+              <div className={`collapsible-types-wrapper ${isExpanded ? 'expanded' : ''}`}>
+                <ul className="collapsible-types-content">
+                  {rest.map(([type, count]) => (
+                    <li key={type}>
+                      <span className="type-name-wrapper">
+                        <ProviderIcon provider={type.split('_')[0]} type={type} />
+                        <span className="type-name" title={type}>
+                          {type}
+                        </span>
+                      </span>
+                      <div className="type-bar-track">
+                        <div
+                          className="type-bar-fill"
+                          style={{ width: `${(count / maxTypeCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="type-count">{count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                type="button"
+                className="toggle-types-btn"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                <span>{isExpanded ? 'Show Less' : `Show All (${sortedTypes.length} types)`}</span>
+                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      <SummaryCharts type="state" counts={statusCounts} />
+      <SummaryCharts type="state" counts={statusCounts} resources={resources} />
     </section>
   );
 }
+
