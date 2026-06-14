@@ -278,10 +278,117 @@ function buildIssues(
   return issues;
 }
 
+function buildAddress(
+  type: string,
+  name: string,
+  index?: number | string,
+  moduleAddress?: string,
+): string {
+  const indexSuffix =
+    index === undefined || index === null ? '' : `[${index}]`;
+  const resourceAddr = `${type}.${name}${indexSuffix}`;
+  return moduleAddress ? `${moduleAddress}.${resourceAddr}` : resourceAddr;
+}
+
+function getModuleAddress(path: unknown): string {
+  if (!Array.isArray(path)) return '';
+  if (path.length <= 1) return '';
+  return path.slice(1).map(segment => `module.${segment}`).join('.');
+}
+
+function parseKeyNameAndIndex(key: string, type: string): { name: string; index?: string | number } {
+  const prefix = type + '.';
+  if (key.startsWith(prefix)) {
+    const remaining = key.slice(prefix.length);
+    const parts = remaining.split('.');
+    if (parts.length > 1) {
+      const lastPart = parts[parts.length - 1];
+      if (/^\d+$/.test(lastPart)) {
+        return {
+          name: parts.slice(0, -1).join('.'),
+          index: parseInt(lastPart, 10),
+        };
+      }
+    }
+    return { name: remaining };
+  }
+  return { name: key };
+}
+
+function inferProviderFromType(type: string): string {
+  const parts = type.split('_');
+  return parts.length > 0 ? parts[0] : 'unknown';
+}
+
+function parseLegacyV3Resources(
+  modules: unknown,
+  warnings: string[],
+): NormalizedStateResource[] {
+  const resources: NormalizedStateResource[] = [];
+  if (!Array.isArray(modules)) {
+    warnings.push('modules is not an array');
+    return resources;
+  }
+
+  let index = 0;
+  for (const mod of modules) {
+    const modRecord = asRecord(mod);
+    if (!modRecord) continue;
+
+    const moduleAddress = getModuleAddress(modRecord.path);
+    const modResources = modRecord.resources;
+    if (!modResources || typeof modResources !== 'object' || Array.isArray(modResources)) {
+      continue;
+    }
+
+    for (const [key, resEntry] of Object.entries(modResources)) {
+      const resRecord = asRecord(resEntry);
+      if (!resRecord) continue;
+
+      const type = typeof resRecord.type === 'string' && resRecord.type.trim() ? resRecord.type : 'unknown';
+      const { name, index: indexKey } = parseKeyNameAndIndex(key, type);
+      const address = buildAddress(type, name, indexKey, moduleAddress || undefined);
+      
+      const primary = asRecord(resRecord.primary);
+      const attributes = primary?.attributes ?? null;
+      
+      const provider = inferProviderFromType(type);
+      const mode = key.startsWith('data.') || type.startsWith('data.') ? 'data' : 'managed';
+      
+      let status: StateResourceStatus = 'ok';
+      if (!primary) {
+        status = 'missing';
+      }
+
+      resources.push({
+        id: address || `resource-v3-${index}`,
+        address,
+        moduleAddress,
+        type,
+        name,
+        index: indexKey,
+        provider,
+        mode,
+        status,
+        attributes,
+        sensitivePaths: [],
+        instanceCount: primary ? 1 : 0,
+        parseStatus: primary ? 'ok' : 'partial',
+        raw: resEntry,
+      });
+
+      index++;
+    }
+  }
+
+  return resources;
+}
+
 function detectFormat(state: Record<string, unknown>): StateFormat | null {
   const values = asRecord(state.values);
   if (values?.root_module) return 'show-json';
   if (Array.isArray(state.resources)) return 'legacy';
+  if (Array.isArray(state.modules)) return 'legacy-v3';
   return null;
 }
 
@@ -314,7 +421,7 @@ export function parseStateJson(text: string, fileName: string): ParsedState {
   const format = detectFormat(state);
   if (!format) {
     warnings.push(
-      'Could not detect state format (expected resources[] or values.root_module)',
+      'Could not detect state format (expected resources[], modules[], or values.root_module)',
     );
   }
 
@@ -333,6 +440,18 @@ export function parseStateJson(text: string, fileName: string): ParsedState {
       warnings.push('values.root_module is missing');
     }
     outputs = parseShowJsonOutputs(rootModule, state);
+  } else if (format === 'legacy-v3') {
+    resources = parseLegacyV3Resources(state.modules, warnings);
+    const rootModule = Array.isArray(state.modules)
+      ? state.modules.find(
+          (m: any) =>
+            m &&
+            Array.isArray(m.path) &&
+            m.path.length === 1 &&
+            m.path[0] === 'root',
+        )
+      : null;
+    outputs = parseLegacyOutputs(rootModule?.outputs, warnings);
   }
 
   const checkResults = parseCheckResults(state.check_results, warnings);

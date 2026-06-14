@@ -7,7 +7,7 @@ export type StateResourceStatus =
   | 'missing'
   | 'failed';
 
-export type StateFormat = 'legacy' | 'show-json';
+export type StateFormat = 'legacy' | 'show-json' | 'legacy-v3';
 
 export interface NormalizedStateResource {
   id: string;
