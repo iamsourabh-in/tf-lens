@@ -64,11 +64,11 @@ export function HomePage({
           Interactive client-side browser visualizer for exploring, analyzing, and auditing Terraform plans and state configurations.
         </p>
         <div className="hero-actions">
-          <button type="button" className="button primary-btn" onClick={handleLoadSamplePlan}>
+          <button type="button" className="button primary" onClick={handleLoadSamplePlan}>
             <span>Try Sample Plan</span>
-            <ArrowRight size={16} />
+            <ArrowRight className="hero-btn-arrow" size={16} />
           </button>
-          <button type="button" className="button secondary-btn" onClick={handleLoadSampleState}>
+          <button type="button" className="button secondary" onClick={handleLoadSampleState}>
             <span>Try Sample State</span>
           </button>
         </div>
