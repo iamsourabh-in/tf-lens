@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
+import { HomePage } from './pages/HomePage';
 import { PlanViewerPage } from './pages/PlanViewerPage';
 import { StateViewerPage } from './pages/StateViewerPage';
 import { TopologyPage } from './pages/TopologyPage';
@@ -42,7 +43,19 @@ function App() {
           <TopBar planFileName={planFileName} stateFileName={stateFileName} />
           <div className="app">
             <Routes>
-              <Route path="/" element={<Navigate to="/plan" replace />} />
+              <Route
+                path="/"
+                element={
+                  <HomePage
+                    setPlan={setPlan}
+                    setPlanFileName={setPlanFileName}
+                    setPlanFileSize={setPlanFileSize}
+                    setState={setState}
+                    setStateFileName={setStateFileName}
+                    setStateFileSize={setStateFileSize}
+                  />
+                }
+              />
               <Route
                 path="/plan"
                 element={

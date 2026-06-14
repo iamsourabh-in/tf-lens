@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import {
+  Home,
   FileText,
   HelpCircle,
   LayoutGrid,
@@ -20,12 +21,23 @@ export function Sidebar({ theme, toggleTheme }: SidebarProps) {
   return (
     <aside className="app-sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-logo">
-          <Layers size={24} className="logo-pulse" />
-        </div>
+        <Link to="/" className="sidebar-logo-link" title="tf-lens Home" data-tooltip="tf-lens Home">
+          <div className="sidebar-logo">
+            <Layers size={24} className="logo-pulse" />
+          </div>
+        </Link>
       </div>
 
       <nav className="sidebar-menu">
+        <NavLink
+          to="/"
+          className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
+          title="tf-lens Home"
+          data-tooltip="tf-lens Home"
+          end
+        >
+          <Home size={20} />
+        </NavLink>
         <NavLink
           to="/plan"
           className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}

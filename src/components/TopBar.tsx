@@ -12,6 +12,8 @@ export function TopBar({ planFileName, stateFileName }: TopBarProps) {
   // Determine page title and breadcrumbs based on location
   const getBreadcrumbs = () => {
     switch (location.pathname) {
+      case '/':
+        return { category: 'tf-lens', page: 'Onboarding & Guide' };
       case '/plan':
         return { category: 'Dashboard', page: 'Plan Analyzer' };
       case '/state':
