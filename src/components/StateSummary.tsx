@@ -1,5 +1,6 @@
 import { statusLabel } from '../lib/stateStatus';
 import type { StateMetadata, StatusCounts } from '../types/state';
+import { SummaryCharts } from './SummaryCharts';
 
 interface StateSummaryProps {
   metadata: StateMetadata;
@@ -87,6 +88,8 @@ export function StateSummary({
           </ul>
         </div>
       )}
+
+      <SummaryCharts type="state" counts={statusCounts} />
     </section>
   );
 }

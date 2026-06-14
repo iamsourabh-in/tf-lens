@@ -1,5 +1,6 @@
 import { displayActionLabel } from '../lib/actionLabels';
 import type { ActionCounts, PlanMetadata } from '../types/plan';
+import { SummaryCharts } from './SummaryCharts';
 
 interface PlanSummaryProps {
   metadata: PlanMetadata;
@@ -84,6 +85,8 @@ export function PlanSummary({
           </ul>
         </div>
       )}
+
+      <SummaryCharts type="plan" counts={actionCounts} />
     </section>
   );
 }
