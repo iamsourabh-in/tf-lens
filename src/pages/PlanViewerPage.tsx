@@ -39,12 +39,25 @@ const EMPTY_FILTERS: ResourceFilters = {
   mode: 'all',
 };
 
-export function PlanViewerPage() {
-  const [plan, setPlan] = useState<ParsedPlan | null>(null);
+interface PlanViewerPageProps {
+  plan: ParsedPlan | null;
+  setPlan: (plan: ParsedPlan | null) => void;
+  fileName: string | undefined;
+  setFileName: (name: string | undefined) => void;
+  fileSize: number | undefined;
+  setFileSize: (size: number | undefined) => void;
+}
+
+export function PlanViewerPage({
+  plan,
+  setPlan,
+  fileName,
+  setFileName,
+  fileSize,
+  setFileSize,
+}: PlanViewerPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fileName, setFileName] = useState<string | undefined>();
-  const [fileSize, setFileSize] = useState<number | undefined>();
   const [tab, setTab] = useState<Tab>('resources');
   const [filters, setFilters] = useState<ResourceFilters>(EMPTY_FILTERS);
   const [selectedResource, setSelectedResource] =

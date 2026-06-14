@@ -36,12 +36,25 @@ const EMPTY_FILTERS: StateResourceFilters = {
   mode: 'all',
 };
 
-export function StateViewerPage() {
-  const [state, setState] = useState<ParsedState | null>(null);
+interface StateViewerPageProps {
+  state: ParsedState | null;
+  setState: (state: ParsedState | null) => void;
+  fileName: string | undefined;
+  setFileName: (name: string | undefined) => void;
+  fileSize: number | undefined;
+  setFileSize: (size: number | undefined) => void;
+}
+
+export function StateViewerPage({
+  state,
+  setState,
+  fileName,
+  setFileName,
+  fileSize,
+  setFileSize,
+}: StateViewerPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fileName, setFileName] = useState<string | undefined>();
-  const [fileSize, setFileSize] = useState<number | undefined>();
   const [tab, setTab] = useState<Tab>('resources');
   const [filters, setFilters] = useState<StateResourceFilters>(EMPTY_FILTERS);
   const [selectedResource, setSelectedResource] =
