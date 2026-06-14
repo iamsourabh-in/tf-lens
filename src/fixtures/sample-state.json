@@ -1,0 +1,134 @@
+{
+  "version": 4,
+  "terraform_version": "1.8.0",
+  "serial": 42,
+  "lineage": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "outputs": {
+    "eks_cluster_endpoint": {
+      "value": "https://amazonaws.com",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-0123456789abcdef0",
+            "cidr_block": "10.0.0.0/16",
+            "enable_dns_hostnames": true,
+            "enable_dns_support": true,
+            "id": "vpc-0123456789abcdef0",
+            "region": "us-east-1",
+            "tags": {
+              "Environment": "Production",
+              "Name": "main-vpc"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_cluster",
+      "name": "production",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:eks:us-east-1:123456789012:cluster/prod-eks",
+            "endpoint": "https://amazonaws.com",
+            "id": "prod-eks",
+            "name": "prod-eks",
+            "role_arn": "arn:aws:iam::123456789012:role/eks-cluster-role",
+            "status": "ACTIVE",
+            "vpc_config": [
+              {
+                "cluster_security_group_id": "sg-0abbccddeeff11223",
+                "endpoint_private_access": true,
+                "endpoint_public_access": true,
+                "subnet_ids": [
+                  "subnet-abcdef1234567890a",
+                  "subnet-abcdef1234567890b"
+                ],
+                "vpc_id": "vpc-0123456789abcdef0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "postgres",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "status": "tainted",
+          "attributes": {
+            "address": "://amazonaws.com",
+            "arn": "arn:aws:rds:us-east-1:123456789012:db:prod-db",
+            "allocated_storage": 20,
+            "engine": "postgres",
+            "engine_version": "15.4",
+            "id": "prod-db",
+            "instance_class": "db.t4g.micro",
+            "name": "appdb",
+            "username": "db_admin",
+            "password": "SuperSecretPassword123!",
+            "status": "available"
+          },
+          "sensitive_attributes": [
+            ["password"]
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "assets",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:s3:::company-prod-assets-bucket",
+            "bucket": "company-prod-assets-bucket",
+            "id": "company-prod-assets-bucket",
+            "region": "us-east-1",
+            "tags": {
+              "ManagedBy": "Terraform"
+            }
+          }
+        }
+      ]
+    },
+    "invalid-entry-should-not-crash",
+    {
+      "mode": "managed",
+      "type": "aws_lambda_function",
+      "name": "worker",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": []
+    }
+  ],
+  "check_results": [
+    {
+      "object_kind": "var",
+      "config_addr": "var.instance_type",
+      "status": "fail",
+      "failure_messages": [
+        "Instance type must be t3.micro or larger for production workloads"
+      ]
+    }
+  ]
+}

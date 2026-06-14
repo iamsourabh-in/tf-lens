@@ -1,0 +1,86 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.0",
+  "variables": {
+    "aws_region": { "value": "ap-northeast-2" }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_vpc.main",
+      "module_address": "",
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "cidr_block": "10.0.0.0/16",
+          "tags": { "Environment": "dev", "Region": "ap-northeast-2" }
+        },
+        "before_sensitive": false,
+        "after_sensitive": false
+      }
+    },
+    {
+      "address": "aws_subnet.public[0]",
+      "module_address": "module.vpc",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public",
+      "index": 0,
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": { "cidr_block": "10.0.1.0/24" },
+        "after": { "cidr_block": "10.0.2.0/24" },
+        "before_sensitive": false,
+        "after_sensitive": false
+      }
+    },
+    {
+      "address": "aws_instance.legacy",
+      "module_address": "module.vpc",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "legacy",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": { "instance_type": "t3.small" },
+        "after": { "instance_type": "t3.medium" },
+        "before_sensitive": false,
+        "after_sensitive": false
+      }
+    },
+    {
+      "address": "aws_s3_bucket.logs",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "logs",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["no-op"],
+        "before": { "bucket": "logs-dev" },
+        "after": { "bucket": "logs-dev" },
+        "before_sensitive": false,
+        "after_sensitive": false
+      }
+    },
+    "invalid-entry-should-not-crash"
+  ],
+  "output_changes": {
+    "vpc_id": {
+      "actions": ["create"],
+      "before": null,
+      "after": "vpc-12345",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "timestamp": "2026-06-08T12:00:00Z",
+  "applyable": true,
+  "errored": false
+}
