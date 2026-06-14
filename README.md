@@ -1,4 +1,6 @@
-# Terraform Viewer
+# TF Lens — Terraform Plan & State Viewer
+
+![TF Lens Screenshot](public/screenshot.jpg)
 
 Interactive web app for exploring Terraform plan and state JSON files. Upload a plan or state file to browse resources, filter by action/status/type/module, and inspect values.
 
