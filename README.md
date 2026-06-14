@@ -1,6 +1,6 @@
 # TF Lens — Terraform Plan & State Viewer
 
-![TF Lens Screenshot](public/screenshot.jpg)
+![TF Lens Screenshot](public/screenshot.png)
 
 Interactive web app for exploring Terraform plan and state JSON files. Upload a plan or state file to browse resources, filter by action/status/type/module, and inspect values.
 
@@ -11,7 +11,6 @@ All parsing runs in the browser. Unknown or partially malformed resources are sh
 From a regional stack:
 
 ```bash
-cd stacks/regional/dev/ap-northeast-2
 terraform plan -out=tfplan
 terraform show -json tfplan > plan_output.json
 ```
