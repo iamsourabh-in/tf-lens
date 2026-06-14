@@ -78,6 +78,7 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
   }, [plan, state]);
 
   // Interactive controls state
+  const [layoutMode, setLayoutMode] = useState<'flow' | 'cluster'>('flow');
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [zoom, setZoom] = useState(1);
@@ -86,67 +87,173 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
   const dragStart = useRef({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  // Layout center coordinates & boundary parameters
-  const canvasWidth = 800;
-  const canvasHeight = 600;
+  // Dynamic canvas size calculations
+  const { canvasWidth, canvasHeight } = useMemo(() => {
+    if (resources.length === 0) return { canvasWidth: 800, canvasHeight: 600 };
+    if (layoutMode === 'cluster') return { canvasWidth: 1000, canvasHeight: 800 };
+    
+    // flow layout dynamic calculations based on depth
+    const nodeMap = new Map(resources.map(r => [r.address, r]));
+    const depthMemo = new Map<string, number>();
+    const getDepth = (address: string, visited = new Set<string>()): number => {
+      if (depthMemo.has(address)) return depthMemo.get(address)!;
+      if (visited.has(address)) return 0;
+      const node = nodeMap.get(address);
+      if (!node || !node.dependsOn || node.dependsOn.length === 0) return 0;
+      visited.add(address);
+      let maxDepDepth = -1;
+      node.dependsOn.forEach(dep => {
+        const match = resources.find(r => r.address === dep || dep.includes(r.address) || r.address.includes(dep));
+        if (match && match.address !== address) {
+          maxDepDepth = Math.max(maxDepDepth, getDepth(match.address, new Set(visited)));
+        }
+      });
+      visited.delete(address);
+      const depth = maxDepDepth + 1;
+      depthMemo.set(address, depth);
+      return depth;
+    };
+    
+    resources.forEach(r => getDepth(r.address));
+    
+    const colCounts: Record<number, number> = {};
+    resources.forEach(r => {
+      const d = depthMemo.get(r.address) || 0;
+      colCounts[d] = (colCounts[d] || 0) + 1;
+    });
+    
+    const numCols = Object.keys(colCounts).length || 1;
+    const maxInCol = Math.max(...Object.values(colCounts), 1);
+    
+    return {
+      canvasWidth: Math.max(1000, numCols * 280 + 150),
+      canvasHeight: Math.max(700, maxInCol * 95 + 100)
+    };
+  }, [resources, layoutMode]);
 
-  // Clustered Layout Engine
-  // Arranges module resources in localized circles to clearly present systems structure
+  // Layout Engine
   const layoutNodes = useMemo(() => {
     if (resources.length === 0) return [];
 
-    // Group resources by module
-    const moduleGroups: Record<string, typeof resources> = {};
-    resources.forEach(node => {
-      const mod = node.moduleAddress;
-      if (!moduleGroups[mod]) moduleGroups[mod] = [];
-      moduleGroups[mod].push(node);
-    });
+    if (layoutMode === 'cluster') {
+      // Group resources by module
+      const moduleGroups: Record<string, typeof resources> = {};
+      resources.forEach(node => {
+        const mod = node.moduleAddress;
+        if (!moduleGroups[mod]) moduleGroups[mod] = [];
+        moduleGroups[mod].push(node);
+      });
 
-    const modules = Object.keys(moduleGroups);
-    const numModules = modules.length;
+      const modules = Object.keys(moduleGroups);
+      const numModules = modules.length;
 
-    // Position centers of modules in circular orbit around canvas center
-    const center = { x: canvasWidth / 2, y: canvasHeight / 2 };
-    const moduleOrbitRadius = numModules <= 1 ? 0 : 180 + numModules * 15;
-    
-    const moduleCenters: Record<string, { x: number; y: number }> = {};
-    modules.forEach((mod, index) => {
-      const angle = (index * 2 * Math.PI) / numModules;
-      moduleCenters[mod] = {
-        x: center.x + moduleOrbitRadius * Math.cos(angle),
-        y: center.y + moduleOrbitRadius * Math.sin(angle),
-      };
-    });
-
-    // Arrange nodes within each module cluster
-    const nodesList: Array<typeof resources[0] & { x: number; y: number }> = [];
-    
-    modules.forEach(mod => {
-      const group = moduleGroups[mod];
-      const modCenter = moduleCenters[mod];
-      const count = group.length;
+      // Position centers of modules in circular orbit around canvas center
+      const center = { x: canvasWidth / 2, y: canvasHeight / 2 };
+      const moduleOrbitRadius = numModules <= 1 ? 0 : 180 + numModules * 15;
       
-      // Node arrangement radius inside module cluster
-      const clusterRadius = count <= 1 ? 0 : 35 + count * 8;
+      const moduleCenters: Record<string, { x: number; y: number }> = {};
+      modules.forEach((mod, index) => {
+        const angle = (index * 2 * Math.PI) / numModules;
+        moduleCenters[mod] = {
+          x: center.x + moduleOrbitRadius * Math.cos(angle),
+          y: center.y + moduleOrbitRadius * Math.sin(angle),
+        };
+      });
 
-      group.forEach((node, i) => {
-        const angle = count <= 1 ? 0 : (i * 2 * Math.PI) / count;
-        const x = modCenter.x + clusterRadius * Math.cos(angle);
-        const y = modCenter.y + clusterRadius * Math.sin(angle);
-        nodesList.push({
-          ...node,
-          x,
-          y,
+      // Arrange nodes within each module cluster
+      const nodesList: Array<typeof resources[0] & { x: number; y: number }> = [];
+      
+      modules.forEach(mod => {
+        const group = moduleGroups[mod];
+        const modCenter = moduleCenters[mod];
+        const count = group.length;
+        
+        // Node arrangement radius inside module cluster
+        const clusterRadius = count <= 1 ? 0 : 35 + count * 8;
+
+        group.forEach((node, i) => {
+          const angle = count <= 1 ? 0 : (i * 2 * Math.PI) / count;
+          const x = modCenter.x + clusterRadius * Math.cos(angle);
+          const y = modCenter.y + clusterRadius * Math.sin(angle);
+          nodesList.push({
+            ...node,
+            x,
+            y,
+          });
         });
       });
-    });
 
-    return nodesList;
-  }, [resources]);
+      return nodesList;
+    } else {
+      // 'flow' Layout: Left-to-Right Hierarchical Dependency Graph
+      const nodeMap = new Map(resources.map(r => [r.address, r]));
+      
+      // Calculate depth rank using DFS
+      const depthMemo = new Map<string, number>();
+      const getDepth = (address: string, visited = new Set<string>()): number => {
+        if (depthMemo.has(address)) return depthMemo.get(address)!;
+        if (visited.has(address)) return 0;
+        
+        const node = nodeMap.get(address);
+        if (!node || !node.dependsOn || node.dependsOn.length === 0) return 0;
+        
+        visited.add(address);
+        let maxDepDepth = -1;
+        node.dependsOn.forEach(dep => {
+          const match = resources.find(r => r.address === dep || dep.includes(r.address) || r.address.includes(dep));
+          if (match && match.address !== address) {
+            maxDepDepth = Math.max(maxDepDepth, getDepth(match.address, new Set(visited)));
+          }
+        });
+        visited.delete(address);
+        
+        const depth = maxDepDepth + 1;
+        depthMemo.set(address, depth);
+        return depth;
+      };
+      
+      resources.forEach(r => getDepth(r.address));
+      
+      // Group nodes by depth
+      const depthGroups: Record<number, typeof resources> = {};
+      resources.forEach(r => {
+        const d = depthMemo.get(r.address) || 0;
+        if (!depthGroups[d]) depthGroups[d] = [];
+        depthGroups[d].push(r);
+      });
+      
+      const depths = Object.keys(depthGroups).map(Number).sort((a, b) => a - b);
+      
+      const colSpacing = 280;
+      const rowSpacing = 95;
+      const nodesList: Array<typeof resources[0] & { x: number; y: number }> = [];
+      
+      depths.forEach((d, colIndex) => {
+        const group = depthGroups[d];
+        const numNodes = group.length;
+        
+        const columnHeight = (numNodes - 1) * rowSpacing;
+        const startY = (canvasHeight - columnHeight) / 2;
+        
+        group.forEach((node, rowIndex) => {
+          const x = 150 + colIndex * colSpacing;
+          const y = startY + rowIndex * rowSpacing;
+          nodesList.push({
+            ...node,
+            x,
+            y,
+          });
+        });
+      });
+      
+      return nodesList;
+    }
+  }, [resources, layoutMode, canvasWidth, canvasHeight]);
 
-  // Bounding boxes for each module group to visually structure modules
+  // Bounding boxes for each module group to visually structure modules (circular layout only)
   const moduleBounds = useMemo(() => {
+    if (layoutMode === 'flow') return [];
+    
     const bounds: Array<{ module: string; minX: number; minY: number; maxX: number; maxY: number }> = [];
     const moduleGroups: Record<string, typeof layoutNodes> = {};
     
@@ -168,7 +275,6 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
       });
 
       const pad = 38;
-      // If single node, draw a default sized box
       if (nodes.length === 1) {
         bounds.push({
           module: mod,
@@ -189,7 +295,7 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
     });
 
     return bounds;
-  }, [layoutNodes]);
+  }, [layoutNodes, layoutMode]);
 
   // Find connections between nodes based on dependsOn address matches
   const connections = useMemo(() => {
@@ -209,7 +315,6 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
       });
     });
     
-    // De-duplicate lines
     const seen = new Set<string>();
     return list.filter(item => {
       if (seen.has(item.key)) return false;
@@ -220,7 +325,6 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
 
   // Mouse handlers for SVG panning and dragging
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Only drag when clicking canvas background or module box
     const tagName = (e.target as SVGElement).tagName;
     if (tagName === 'svg' || tagName === 'rect' || (e.target as SVGElement).classList.contains('panning-layer')) {
       setIsDragging(true);
@@ -287,6 +391,25 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        
+        {/* Layout mode switcher */}
+        <div className="layout-selector">
+          <button
+            type="button"
+            className={layoutMode === 'flow' ? 'active' : ''}
+            onClick={() => setLayoutMode('flow')}
+          >
+            Dependency Flow
+          </button>
+          <button
+            type="button"
+            className={layoutMode === 'cluster' ? 'active' : ''}
+            onClick={() => setLayoutMode('cluster')}
+          >
+            Module Groups
+          </button>
+        </div>
+
         <div className="canvas-zoom-buttons">
           <button type="button" className="button" onClick={() => handleZoom(1.25)} data-tooltip="Zoom In">
             <ZoomIn size={16} />
@@ -317,7 +440,7 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
               <marker
                 id="dependency-arrow"
                 viewBox="0 0 10 10"
-                refX="25"
+                refX={layoutMode === 'flow' ? 6 : 25}
                 refY="5"
                 markerWidth="6"
                 markerHeight="6"
@@ -328,7 +451,7 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
               <marker
                 id="dependency-arrow-selected"
                 viewBox="0 0 10 10"
-                refX="25"
+                refX={layoutMode === 'flow' ? 6 : 25}
                 refY="5"
                 markerWidth="7"
                 markerHeight="7"
@@ -381,7 +504,6 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
                   conn.key.endsWith(`-${selectedNode}`)
                 );
                 
-                // Search matching states
                 const fromNode = layoutNodes.find(n => n.address === conn.key.split('-')[0]);
                 const toNode = layoutNodes.find(n => n.address === conn.key.split('-')[1]);
                 
@@ -399,28 +521,52 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
                 const strokeDasharray = isSelectedNodeRelated ? undefined : '3 3';
                 const marker = isSelectedNodeRelated ? 'url(#dependency-arrow-selected)' : 'url(#dependency-arrow)';
 
-                return (
-                  <line
-                    key={conn.key}
-                    x1={conn.from.x}
-                    y1={conn.from.y}
-                    x2={conn.to.x}
-                    y2={conn.to.y}
-                    stroke={stroke}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={strokeDasharray}
-                    markerEnd={marker}
-                    style={{ opacity, transition: 'all 0.25s ease' }}
-                    className="connection-line"
-                  />
-                );
+                if (layoutMode === 'flow') {
+                  const x1 = conn.from.x + 100;
+                  const y1 = conn.from.y;
+                  const x2 = conn.to.x - 100;
+                  const y2 = conn.to.y;
+                  
+                  const dx = Math.abs(x2 - x1);
+                  const ctrlX = Math.max(40, dx * 0.45);
+                  const pathData = `M ${x1} ${y1} C ${x1 + ctrlX} ${y1}, ${x2 - ctrlX} ${y2}, ${x2} ${y2}`;
+
+                  return (
+                    <path
+                      key={conn.key}
+                      d={pathData}
+                      fill="none"
+                      stroke={stroke}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={strokeDasharray}
+                      markerEnd={marker}
+                      style={{ opacity, transition: 'all 0.25s ease' }}
+                      className="connection-line"
+                    />
+                  );
+                } else {
+                  return (
+                    <line
+                      key={conn.key}
+                      x1={conn.from.x}
+                      y1={conn.from.y}
+                      x2={conn.to.x}
+                      y2={conn.to.y}
+                      stroke={stroke}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={strokeDasharray}
+                      markerEnd={marker}
+                      style={{ opacity, transition: 'all 0.25s ease' }}
+                      className="connection-line"
+                    />
+                  );
+                }
               })}
 
               {/* Draw resource nodes */}
               {layoutNodes.map(node => {
                 const isSelected = selectedNode === node.address;
                 
-                // Matches Search Filter
                 const isMatched = search === '' || 
                   node.address.toLowerCase().includes(search.toLowerCase()) ||
                   node.type.toLowerCase().includes(search.toLowerCase());
@@ -430,59 +576,138 @@ export function TopologyPage({ plan, state }: TopologyPageProps) {
                   ? 0.15 
                   : (selectedNode ? (isSelected ? 1 : 0.6) : 1);
 
-                return (
-                  <g
-                    key={node.address}
-                    transform={`translate(${node.x}, ${node.y})`}
-                    onClick={() => setSelectedNode(node.address)}
-                    className={`node-group ${isSelected ? 'selected' : ''}`}
-                    style={{ cursor: 'pointer', opacity, transition: 'all 0.25s ease' }}
-                  >
-                    {/* Inner Drop Shadow / Outer border */}
-                    <circle
-                      r="20"
-                      fill="var(--color-surface)"
-                      stroke={isSelected ? 'var(--color-accent)' : 'var(--color-border)'}
-                      strokeWidth={isSelected ? '3' : '1.5'}
-                      style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }}
-                    />
-                    
-                    {/* Dynamic Provider Icon via foreignObject */}
-                    <foreignObject x="-10" y="-10" width="20" height="20" pointerEvents="none">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                        <ProviderIcon provider={node.provider} type={node.type} />
-                      </div>
-                    </foreignObject>
-
-                    {/* Status Dot indicator */}
-                    <circle
-                      r="5"
-                      cx="14"
-                      cy="14"
-                      fill={getStatusColor(node.status)}
-                      stroke="var(--color-surface)"
-                      strokeWidth="1.5"
-                    />
-                    
-                    {/* Node Text Label */}
-                    <text
-                      y="32"
-                      textAnchor="middle"
-                      fill="var(--color-text-strong)"
-                      fontSize="9"
-                      fontWeight="600"
-                      className="node-label"
-                      style={{ background: 'var(--color-surface)' }}
+                if (layoutMode === 'flow') {
+                  return (
+                    <g
+                      key={node.address}
+                      transform={`translate(${node.x}, ${node.y})`}
+                      onClick={() => setSelectedNode(node.address)}
+                      className={`node-group ${isSelected ? 'selected' : ''}`}
+                      style={{ cursor: 'pointer', opacity, transition: 'all 0.25s ease' }}
                     >
-                      {node.name.length > 18 ? `${node.name.slice(0, 15)}…` : node.name}
-                    </text>
-                  </g>
-                );
+                      <rect
+                        x="-100"
+                        y="-25"
+                        width="200"
+                        height="50"
+                        rx="8"
+                        fill="var(--color-surface)"
+                        stroke={isSelected ? 'var(--color-accent)' : 'var(--color-border)'}
+                        strokeWidth={isSelected ? '2' : '1'}
+                        style={{ filter: isSelected ? 'drop-shadow(0 0 10px var(--color-accent-border))' : 'drop-shadow(0 2px 5px rgba(0,0,0,0.06))' }}
+                      />
+                      
+                      <path
+                        d="M -100 -17 A 8 8 0 0 1 -92 -25 L -94 -25 L -94 25 L -92 25 A 8 8 0 0 1 -100 17 Z"
+                        fill={getStatusColor(node.status)}
+                      />
+                      
+                      <foreignObject x="-86" y="-15" width="28" height="28" pointerEvents="none">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                          <ProviderIcon provider={node.provider} type={node.type} />
+                        </div>
+                      </foreignObject>
+
+                      <text
+                        x="-48"
+                        y="-3"
+                        fill="var(--color-text-strong)"
+                        fontSize="9.5"
+                        fontWeight="700"
+                        fontFamily="var(--font-body)"
+                        textAnchor="start"
+                      >
+                        {node.name.length > 20 ? `${node.name.slice(0, 18)}…` : node.name}
+                      </text>
+
+                      <text
+                        x="-48"
+                        y="12"
+                        fill="var(--color-text-muted)"
+                        fontSize="8"
+                        fontFamily="var(--font-mono)"
+                        textAnchor="start"
+                      >
+                        {node.type.length > 22 ? `${node.type.slice(0, 20)}…` : node.type}
+                      </text>
+                      
+                      {node.moduleAddress !== '(root)' && (
+                        <g transform="translate(100, -25)">
+                          <rect
+                            x="-52"
+                            y="-1"
+                            width="52"
+                            height="13"
+                            rx="3"
+                            fill="var(--color-accent-soft)"
+                            stroke="var(--color-accent-border)"
+                            strokeWidth="0.5"
+                          />
+                          <text
+                            x="-26"
+                            y="8"
+                            textAnchor="middle"
+                            fill="var(--color-accent)"
+                            fontSize="7"
+                            fontWeight="bold"
+                            fontFamily="var(--font-mono)"
+                          >
+                            {node.moduleAddress.length > 10 ? `…${node.moduleAddress.slice(-8)}` : node.moduleAddress}
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                } else {
+                  return (
+                    <g
+                      key={node.address}
+                      transform={`translate(${node.x}, ${node.y})`}
+                      onClick={() => setSelectedNode(node.address)}
+                      className={`node-group ${isSelected ? 'selected' : ''}`}
+                      style={{ cursor: 'pointer', opacity, transition: 'all 0.25s ease' }}
+                    >
+                      <circle
+                        r="20"
+                        fill="var(--color-surface)"
+                        stroke={isSelected ? 'var(--color-accent)' : 'var(--color-border)'}
+                        strokeWidth={isSelected ? '3' : '1.5'}
+                        style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }}
+                      />
+                      
+                      <foreignObject x="-10" y="-10" width="20" height="20" pointerEvents="none">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                          <ProviderIcon provider={node.provider} type={node.type} />
+                        </div>
+                      </foreignObject>
+
+                      <circle
+                        r="5"
+                        cx="14"
+                        cy="14"
+                        fill={getStatusColor(node.status)}
+                        stroke="var(--color-surface)"
+                        strokeWidth="1.5"
+                      />
+                      
+                      <text
+                        y="32"
+                        textAnchor="middle"
+                        fill="var(--color-text-strong)"
+                        fontSize="9"
+                        fontWeight="600"
+                        className="node-label"
+                        style={{ background: 'var(--color-surface)' }}
+                      >
+                        {node.name.length > 18 ? `${node.name.slice(0, 15)}…` : node.name}
+                      </text>
+                    </g>
+                  );
+                }
               })}
             </g>
           </svg>
           
-          {/* Zoom & drag tip info */}
           <div className="canvas-tooltip-info">
             <span>Scroll background to drag canvas. Click node to inspect details.</span>
           </div>

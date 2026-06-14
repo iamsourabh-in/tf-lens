@@ -1716,6 +1716,37 @@ body {
   box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
+.layout-selector {
+  display: flex;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+}
+
+.layout-selector button {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+}
+
+.layout-selector button.active {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.layout-selector button:hover:not(.active) {
+  color: var(--color-text-strong);
+}
+
 .canvas-zoom-buttons {
   display: flex;
   gap: 6px;
@@ -1771,7 +1802,8 @@ body {
   height: 100%;
 }
 
-.node-group circle {
+.node-group circle,
+.node-group rect {
   transition: all var(--transition-fast) ease;
 }
 
@@ -1785,6 +1817,16 @@ body {
   stroke: var(--color-accent);
   stroke-width: 3px;
   r: 21px;
+}
+
+.node-group:hover rect {
+  stroke: var(--color-accent);
+  stroke-width: 1.5px;
+}
+
+.node-group.selected rect {
+  stroke: var(--color-accent);
+  stroke-width: 2px;
 }
 
 .node-label {
