@@ -78,8 +78,8 @@ export function SettingsPage({ theme, setTheme }: SettingsPageProps) {
               <strong>TF Lens</strong> is an interactive web-based utility for browsing and auditing
               Terraform plans and tfstate files.
             </p>
-            <p>Version: 1.0.0 (POC Edition)</p>
-            <p>Created with ✨ vibes ✨ to deliver a professional developer inspecting experience.</p>
+            <p>Version: 1.0.0 (Professional Edition)</p>
+            <p>Created to deliver a professional, high-fidelity developer inspection experience.</p>
           </div>
         </div>
       </div>

@@ -128,7 +128,7 @@ export function SummaryCharts({ type, counts }: SummaryChartsProps) {
       </div>
 
       <div className="chart-box">
-        <h4>Resource Changes Over Time (Mock)</h4>
+        <h4>Resource Changes Over Time</h4>
         <div className="chart-wrapper">
           <svg viewBox={`0 0 ${width} ${height}`} className="svg-chart">
             <defs>
